@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id               Int      @id @default(autoincrement())
+  user_telegram_id String   @unique
+  is_premium       Boolean
+  created_at       DateTime @default(now()) // 这个待定，不确定是不是直接从前端拿到时间数据
+  invitation_code  Int      @unique
+}
+
+model LottoRecords {
+  id               Int      @id @default(autoincrement())
+  user_telegram_id String
+  bought_at        DateTime @default(now()) // 这个待定，不确定是不是直接从前端拿到时间数据
+  lotto            Json // 需要明白JSON如何存数据
+}
+
+model PremiumTaskRecord {
+  id               Int      @id @default(autoincrement())
+  user_telegram_id String   @unique
+  completed_at     DateTime @default(now()) // 这个待定，不确定是不是直接从前端拿到时间数据
+}
+
+model TGChannelTaskRecord {
+  id               Int      @id @default(autoincrement())
+  user_telegram_id String   @unique
+  completed_at     DateTime @default(now()) // 这个待定，不确定是不是直接从前端拿到时间数据
+}
+
+model FollowXTaskRecord {
+  id               Int      @id @default(autoincrement())
+  user_telegram_id String   @unique
+  completed_at     DateTime @default(now()) // 这个待定，不确定是不是直接从前端拿到时间数据
+}
+
+model DailyCheckinTaskRecord {
+  id               Int      @id @default(autoincrement())
+  user_telegram_id String
+  completed_at     DateTime @default(now()) // 这个待定，不确定是不是直接从前端拿到时间数据
+}
+
+model TweetRecord {
+  id         Int    @id @default(autoincrement())
+  tweet_link String @unique
+}
+
+model RetweetTaskRecord {
+  id               Int      @id @default(autoincrement())
+  user_telegram_id String
+  tweet_id         Int
+  completed_at     DateTime @default(now()) // 这个待定，不确定是不是直接从前端拿到时间数据
+}
+
+model InviteRecord {
+  id                       Int      @id @default(autoincrement())
+  invitation_code          Int
+  invited_user_telegram_id String
+  if_premium               Boolean // 记录邀请来的用户是否的Premium会员
+  invited_at               DateTime @default(now()) // 这个待定，不确定是不是直接从前端拿到时间数据
+}
