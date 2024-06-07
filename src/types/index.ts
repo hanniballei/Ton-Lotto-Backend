@@ -20,3 +20,41 @@ export interface InviteInfo {
     is_premium: boolean
 }
 
+// 记录刮刮乐每个区域的信息
+export interface LottoZone {
+    // TODO
+    icon: "pepe" | "doge" | "pogai" | "bonk",
+    tier: 1 | 2 | 3 | 4,
+    reward: number
+}
+
+// 记录刮刮乐卡的信息
+export interface LottoInfo {
+    pepe_num: number,
+    rewards: number,
+    lotto: LottoZone[]
+}
+
+// Redis中存储的最新刮刮乐记录
+export interface LottoInfoinRedis {
+    lottoInfo: LottoInfo,
+    bought_at: Date,
+    done: boolean
+}
+
+// 生成彩票后返回给前端的内容
+export interface LottoandChipsInfo {
+    is_remain: boolean,
+    lottoInfo: LottoInfo,
+    chips: number
+}
+
+// 任务完成信息
+export interface taskCompletion {
+    premium: boolean,
+    join_our_channel: boolean,
+    follow_our_x: boolean,
+    daily_checkin: boolean,
+    daily_invite: boolean,
+    daily_lotto: boolean
+}
