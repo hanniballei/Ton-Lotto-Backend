@@ -6,6 +6,11 @@ import { InviteInfo, LottoInfo, LottoInfoinRedis, LottoandChipsInfo, UserDataInf
 import { checkIfTimeIsToday, invitationCodeGenerator, lottoGenerator } from "./utils/utilfunc";
 import { isoTimeExample, lottoInfoinRedisExampleJson } from "./utils/example";
 import responseMiddleware from "./middlewares/responseMiddleware";
+import dotenv from 'dotenv';
+import authMiddleware, { getInitData } from "./middlewares/authMiddleware";
+dotenv.config();
+
+const PORT = process.env.PORT || 3000;
 
 const app = express();
 // 使用三个中间件，用于资源跨域请求以及解析HTTP JSON数据
@@ -22,13 +27,16 @@ const prisma = new PrismaClient();
 // 进入游戏返回用户信息
 // 注意我会返回两种类型中的一个：string用作错误提示，UserDataInfo用作用户信息
 // 前端发送数据的格式是Object，里面有user_telegram_id, username, is_premium和invitation_code
-app.get("/user", async (req, res) => {
-    // 从req.body解析出来的常量
-    const user_telegram_id = String(req.body.user_telegram_id);
-    const username = String(req.body.username);
-    const is_premium = Boolean(req.body.is_premium);
+app.get("/user", authMiddleware, async (req, res) => {
+    // 获取请求头中的用户信息
+    const initData = getInitData(res)!
+
+    const { id, username, isPremium } = initData.user!
+    const user_telegram_id = String(id);
+    const is_premium = Boolean(isPremium);
+
     // 这里的邀请码是指该用户点击的邀请码，而不是属于他的邀请码
-    const invitation_code = String(req.body.invitation_code);
+    const invitation_code = String(req.query.invitation_code);
 
     // 从MySQL获取用户信息
     const user = await prisma.users.findUnique({
@@ -56,7 +64,7 @@ app.get("/user", async (req, res) => {
         // 组装要存入MySQL的用户数据
         const user: UserInfo = {
             user_telegram_id: user_telegram_id,
-            username: username,
+            username: username!,
             is_premium: is_premium,
             // 首次将用户信息存入MySQL时，邀请码这一个字段先置为空字符串
             invitation_code: placeholder
@@ -165,7 +173,7 @@ app.get("/user", async (req, res) => {
         ranking: Number(user_ranking) + 1
     }
 
-    res.json(userDataInfo);
+    res.success(userDataInfo)
 });
 
 
@@ -585,6 +593,6 @@ app.post("task/daily_lotto", async (req, res) => {
 
 
 //监听5000端口 理解为后端的端口号
-app.listen(5000, () => {
-    console.log("Connected to backend!");
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 }) 

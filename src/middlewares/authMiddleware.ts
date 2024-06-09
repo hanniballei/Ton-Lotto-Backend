@@ -1,4 +1,4 @@
-import { validate, parse, type InitData } from '@tma.js/init-data-node';
+import { validate, parse, type InitDataParsed } from '@tma.js/init-data-node';
 import express, {
     type ErrorRequestHandler,
     type RequestHandler,
@@ -14,7 +14,7 @@ const BOT_TOKEN = process.env.BOT_TOKEN ?? ''
  * @param res - Response object.
  * @param initData - init data.
  */
-function setInitData(res: Response, initData: InitData): void {
+function setInitData(res: Response, initData: InitDataParsed): void {
     res.locals.initData = initData;
 }
 
@@ -24,7 +24,7 @@ function setInitData(res: Response, initData: InitData): void {
  * @returns Init data stored in the Response object. Can return undefined in case,
  * the client is not authorized.
  */
-function getInitData(res: Response): InitData | undefined {
+export function getInitData(res: Response): InitDataParsed | undefined {
     return res.locals.initData;
 }
 
@@ -38,7 +38,7 @@ const authMiddleware: RequestHandler = (req, res, next) => {
     // We expect passing init data in the Authorization header in the following format:
     // <auth-type> <auth-data>
     // <auth-type> must be "tma", and <auth-data> is Telegram Mini Apps init data.
-    const [authType, authData = ''] = (req.header('authorization') || '').split(' ');
+    const [authType, authData = ''] = (req.header('tma-authorization') || '').split(' ');
 
     switch (authType) {
         case 'tma':
@@ -46,7 +46,7 @@ const authMiddleware: RequestHandler = (req, res, next) => {
                 // Validate init data.
                 validate(authData, BOT_TOKEN, {
                     // We consider init data sign valid for 1 hour from their creation moment.
-                    expiresIn: 3600,
+                    expiresIn: 36000000,
                 });
 
                 // Parse init data. We will surely need it in the future.
@@ -60,3 +60,5 @@ const authMiddleware: RequestHandler = (req, res, next) => {
             return next(new Error('Unauthorized'));
     }
 };
+
+export default authMiddleware
