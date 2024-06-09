@@ -5,12 +5,14 @@ import { PrismaClient } from "@prisma/client";
 import { InviteInfo, LottoInfo, LottoInfoinRedis, LottoandChipsInfo, UserDataInfo, UserInfo, taskCompletion } from "./types";
 import { checkIfTimeIsToday, invitationCodeGenerator, lottoGenerator } from "./utils/utilfunc";
 import { isoTimeExample, lottoInfoinRedisExampleJson } from "./utils/example";
+import responseMiddleware from "./middlewares/responseMiddleware";
 
 const app = express();
 // 使用三个中间件，用于资源跨域请求以及解析HTTP JSON数据
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(responseMiddleware);
 
 redisClient.on('ready', () => console.log('Redis Client is Ready'));
 redisClient.connect()   // 连接Redis
@@ -27,7 +29,7 @@ app.get("/user", async (req, res) => {
     const is_premium = Boolean(req.body.is_premium);
     // 这里的邀请码是指该用户点击的邀请码，而不是属于他的邀请码
     const invitation_code = String(req.body.invitation_code);
-    
+
     // 从MySQL获取用户信息
     const user = await prisma.users.findUnique({
         where: {
@@ -49,8 +51,8 @@ app.get("/user", async (req, res) => {
             })
         }
     } else {
-        const placeholder:string = "";
-        
+        const placeholder: string = "";
+
         // 组装要存入MySQL的用户数据
         const user: UserInfo = {
             user_telegram_id: user_telegram_id,
@@ -58,7 +60,7 @@ app.get("/user", async (req, res) => {
             is_premium: is_premium,
             // 首次将用户信息存入MySQL时，邀请码这一个字段先置为空字符串
             invitation_code: placeholder
-        } 
+        }
 
         // 向MySQL用户信息表里存入数据
         const newUser = await prisma.users.create({
@@ -67,10 +69,10 @@ app.get("/user", async (req, res) => {
 
         // 获取自增id
         const id: number = Number(newUser.id);
-        
+
         // 根据MySQL的自增id生成邀请码
         const user_invitation_code: string = invitationCodeGenerator(id);
-        
+
         // 更新MySQL的Users数据表
         // 因为用了两步操作数据库，所以前端尽量在收到或使用invitation_code信息的时候加入是否为空字符串的校验
         const updataUserInvitationCode = await prisma.users.update({
@@ -89,7 +91,7 @@ app.get("/user", async (req, res) => {
                 invited_user_telegram_id: user_telegram_id,
                 is_premium: is_premium
             };
-            
+
             const newInvite = await prisma.inviteRecord.create({
                 data: invited_info
             });
@@ -112,11 +114,11 @@ app.get("/user", async (req, res) => {
                 } else {
                     res.send("Invitaion Code Owner Information is empty!");
                 }
-                
+
                 // 在Redis中初始化用户信息
                 // TODO
                 await redisClient.set(`user_chips_${user_telegram_id}`, 2000);
-                await redisClient.zAdd("user_points", [{score: 0, value: user_telegram_id}]);
+                await redisClient.zAdd("user_points", [{ score: 0, value: user_telegram_id }]);
             } else {
                 // 在Redis中增加邀请者的筹码数
                 // 判断获取到的邀请码所有者信息是否为空
@@ -130,7 +132,7 @@ app.get("/user", async (req, res) => {
                 // 在Redis中初始化用户信息
                 // TODO
                 await redisClient.set(`user_chips_${user_telegram_id}`, 1000);
-                await redisClient.zAdd("user_points", [{score: 0, value: user_telegram_id}]);
+                await redisClient.zAdd("user_points", [{ score: 0, value: user_telegram_id }]);
                 await redisClient.set(`user_lotto_number_${user_telegram_id}`, 0);
                 await redisClient.set(`user_lotto_win_number_${user_telegram_id}`, 0);
                 // TODO：别忘了初始化最新刮刮乐信息、最新邀请任务记录、最新Checkin任务记录
@@ -141,7 +143,7 @@ app.get("/user", async (req, res) => {
         } else {
             // 在Redis中初始化用户信息
             await redisClient.set(`user_chips_${user_telegram_id}`, 0);
-            await redisClient.zAdd("user_points", [{score: 0, value: user_telegram_id}]);
+            await redisClient.zAdd("user_points", [{ score: 0, value: user_telegram_id }]);
             await redisClient.set(`user_lotto_number_${user_telegram_id}`, 0);
             await redisClient.set(`user_lotto_win_number_${user_telegram_id}`, 0);
             // TODO：别忘了初始化最新刮刮乐信息、最新邀请任务记录、最新Checkin任务记录
@@ -156,13 +158,13 @@ app.get("/user", async (req, res) => {
     const user_points = await redisClient.zScore("user_points", user_telegram_id);
     // 注意排名是从0开始的，需要给排名+1
     const user_ranking = await redisClient.zRevRank("user_points", user_telegram_id);
-    
-    const userDataInfo: UserDataInfo =  {
+
+    const userDataInfo: UserDataInfo = {
         chips: Number(user_chips),
         points: Number(user_points),
         ranking: Number(user_ranking) + 1
     }
-    
+
     res.json(userDataInfo);
 });
 
@@ -192,10 +194,10 @@ app.get("/lotto/check", async (req, res) => {
 app.get("/lotto/start", async (req, res) => {
     // 从req.body解析出来的常量
     const user_telegram_id = String(req.body.user_telegram_id);
-    
+
     // 在Redis中查找用户的筹码数
     const user_chips = await redisClient.get(`user_chips_${user_telegram_id}`);
-    
+
     // 检查用户筹码数是否可以买刮刮乐
     if (Number(user_chips) >= 100) {
         const lotto_record = await redisClient.get(`user_newest_lotto_${user_telegram_id}`);
@@ -208,7 +210,7 @@ app.get("/lotto/start", async (req, res) => {
             if (lotto_done) {
                 // 生成彩票信息
                 const lottoInfo: LottoInfo = lottoGenerator();
-                
+
                 // TODO: 是不是没什么必要存在MySQL中
                 // 记录当前时间
                 const now = new Date();
@@ -283,11 +285,11 @@ app.post("/lotto/end", async (req, res) => {
             // 用户积分数增加rewards
             const old_user_points = await redisClient.zScore("user_points", user_telegram_id);
             const new_user_points = Number(old_user_points) + rewards;
-            await redisClient.zAdd("user_points", [{score: new_user_points, value: user_telegram_id}]);
+            await redisClient.zAdd("user_points", [{ score: new_user_points, value: user_telegram_id }]);
 
             // 用户中彩票数+1
             await redisClient.incrBy(`user_lotto_win_number_${user_telegram_id}`, 1);
-        } 
+        }
 
         // 用户刮彩票数+1
         await redisClient.incrBy(`user_lotto_number_${user_telegram_id}`, 1);
@@ -297,13 +299,13 @@ app.post("/lotto/end", async (req, res) => {
         const user_points = await redisClient.zScore("user_points", user_telegram_id);
         // 注意排名是从0开始的，需要给排名+1
         const user_ranking = await redisClient.zRevRank("user_points", user_telegram_id);
-        
-        const userDataInfo: UserDataInfo =  {
+
+        const userDataInfo: UserDataInfo = {
             chips: Number(user_chips),
             points: Number(user_points),
             ranking: Number(user_ranking) + 1
         }
-        
+
         res.json(userDataInfo);
     } else {
         res.send("Lottery Record meets some errors");
@@ -315,7 +317,7 @@ app.post("/lotto/end", async (req, res) => {
 app.get("task/check", async (req, res) => {
     // 从req.body解析出来的常量
     const user_telegram_id = String(req.body.user_telegram_id);
-    
+
     let premium: boolean = false;
     let join_our_channel: boolean = false;
     let follow_our_x: boolean = false;
@@ -408,7 +410,7 @@ app.post("task/premium", async (req, res) => {
 
     // 在MySQL表中存入一条任务记录
     const newPremium = await prisma.premiumTaskRecord.create({
-        data: {user_telegram_id: user_telegram_id}
+        data: { user_telegram_id: user_telegram_id }
     });
 
     // 在Redis中增加筹码数量
@@ -419,13 +421,13 @@ app.post("task/premium", async (req, res) => {
     const user_points = await redisClient.zScore("user_points", user_telegram_id);
     // 注意排名是从0开始的，需要给排名+1
     const user_ranking = await redisClient.zRevRank("user_points", user_telegram_id);
-    
-    const userDataInfo: UserDataInfo =  {
+
+    const userDataInfo: UserDataInfo = {
         chips: Number(user_chips),
         points: Number(user_points),
         ranking: Number(user_ranking) + 1
     }
-    
+
     res.json(userDataInfo);
 });
 
@@ -438,7 +440,7 @@ app.post("task/join_our_channel", async (req, res) => {
 
     // 在MySQL表中存入一条任务记录
     const newJoinOurChannel = await prisma.tGChannelTaskRecord.create({
-        data: {user_telegram_id: user_telegram_id}
+        data: { user_telegram_id: user_telegram_id }
     });
 
     // 在Redis中增加筹码数量
@@ -449,13 +451,13 @@ app.post("task/join_our_channel", async (req, res) => {
     const user_points = await redisClient.zScore("user_points", user_telegram_id);
     // 注意排名是从0开始的，需要给排名+1
     const user_ranking = await redisClient.zRevRank("user_points", user_telegram_id);
-    
-    const userDataInfo: UserDataInfo =  {
+
+    const userDataInfo: UserDataInfo = {
         chips: Number(user_chips),
         points: Number(user_points),
         ranking: Number(user_ranking) + 1
     }
-    
+
     res.json(userDataInfo);
 });
 
@@ -468,7 +470,7 @@ app.post("task/follow_our_x", async (req, res) => {
 
     // 在MySQL表中存入一条任务记录
     const newFollowOurX = await prisma.followXTaskRecord.create({
-        data: {user_telegram_id: user_telegram_id}
+        data: { user_telegram_id: user_telegram_id }
     });
 
     // 在Redis中增加筹码数量
@@ -479,13 +481,13 @@ app.post("task/follow_our_x", async (req, res) => {
     const user_points = await redisClient.zScore("user_points", user_telegram_id);
     // 注意排名是从0开始的，需要给排名+1
     const user_ranking = await redisClient.zRevRank("user_points", user_telegram_id);
-    
-    const userDataInfo: UserDataInfo =  {
+
+    const userDataInfo: UserDataInfo = {
         chips: Number(user_chips),
         points: Number(user_points),
         ranking: Number(user_ranking) + 1
     }
-    
+
     res.json(userDataInfo);
 });
 
@@ -498,7 +500,7 @@ app.post("task/daily_checkin", async (req, res) => {
 
     // 在MySQL表中存入一条任务记录
     const newDailyCheckin = await prisma.dailyCheckinTaskRecord.create({
-        data: {user_telegram_id: user_telegram_id}
+        data: { user_telegram_id: user_telegram_id }
     });
 
     // 记录当前时间并转换成ISO字符串
@@ -515,13 +517,13 @@ app.post("task/daily_checkin", async (req, res) => {
     const user_points = await redisClient.zScore("user_points", user_telegram_id);
     // 注意排名是从0开始的，需要给排名+1
     const user_ranking = await redisClient.zRevRank("user_points", user_telegram_id);
-    
-    const userDataInfo: UserDataInfo =  {
+
+    const userDataInfo: UserDataInfo = {
         chips: Number(user_chips),
         points: Number(user_points),
         ranking: Number(user_ranking) + 1
     }
-    
+
     res.json(userDataInfo);
 });
 
@@ -546,13 +548,13 @@ app.post("task/daily_invite", async (req, res) => {
     const user_points = await redisClient.zScore("user_points", user_telegram_id);
     // 注意排名是从0开始的，需要给排名+1
     const user_ranking = await redisClient.zRevRank("user_points", user_telegram_id);
-    
-    const userDataInfo: UserDataInfo =  {
+
+    const userDataInfo: UserDataInfo = {
         chips: Number(user_chips),
         points: Number(user_points),
         ranking: Number(user_ranking) + 1
     }
-    
+
     res.json(userDataInfo);
 });
 
@@ -571,18 +573,18 @@ app.post("task/daily_lotto", async (req, res) => {
     const user_points = await redisClient.zScore("user_points", user_telegram_id);
     // 注意排名是从0开始的，需要给排名+1
     const user_ranking = await redisClient.zRevRank("user_points", user_telegram_id);
-    
-    const userDataInfo: UserDataInfo =  {
+
+    const userDataInfo: UserDataInfo = {
         chips: Number(user_chips),
         points: Number(user_points),
         ranking: Number(user_ranking) + 1
     }
-    
+
     res.json(userDataInfo);
 });
 
 
 //监听5000端口 理解为后端的端口号
-app.listen(5000,()=>{
+app.listen(5000, () => {
     console.log("Connected to backend!");
 }) 

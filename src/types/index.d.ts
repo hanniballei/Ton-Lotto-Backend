@@ -1,3 +1,10 @@
+declare namespace NodeJS {
+    interface ProcessEnv {
+        DATABASE_URL: string
+        BOT_TOKEN: string
+    }
+}
+
 // 返回前端的用户筹码、积分、排名信息
 export interface UserDataInfo {
     chips: number,
@@ -11,7 +18,7 @@ export interface UserInfo {
     username: string,
     is_premium: boolean,
     invitation_code: string
-} 
+}
 
 // 向MySQL的InviteRecord表存入的被邀请信息
 export interface InviteInfo {
