@@ -66,3 +66,17 @@ export interface taskCompletion {
     daily_invite: boolean,
     daily_lotto: boolean
 }
+
+// 用户排名信息
+export interface RankingUserInfo {
+    user_telegram_id: string,
+    username: string,
+    rank: number,
+    points: number
+}
+
+// 排名界面需要返回给前端的信息
+export interface RankingPageInfo {
+    current_user: UserDataInfo,
+    ranking_info: RankingUserInfo[]
+}

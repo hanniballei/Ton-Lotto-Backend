@@ -1,5 +1,6 @@
 import e from "express";
-import { LottoInfo, LottoZone } from "../types";
+import { LottoInfo, LottoZone, RankingUserInfo } from "../types";
+import { PrismaClient } from "@prisma/client";
 
 // 邀请码生成器
 export function invitationCodeGenerator(id: number): string {
