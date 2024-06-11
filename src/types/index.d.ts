@@ -80,3 +80,21 @@ export interface RankingPageInfo {
     current_user: UserDataInfo,
     ranking_info: RankingUserInfo[]
 }
+
+export interface UserTest {
+    invitation_code: string,
+    is_premium: boolean,
+    chips: number,
+    points: number,
+    ranking: number,
+    lotto_number: number,
+    lotto_win_number: number,
+    newest_lotto: LottoInfoinRedis,
+    daily_checkin: Date,
+    daily_invite: Date
+}
+
+export interface topPointsUsers {
+    score: number,
+    value: string
+}

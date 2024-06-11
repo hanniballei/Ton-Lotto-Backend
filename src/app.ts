@@ -2,12 +2,13 @@ import express from "express";
 import cors from "cors";
 import redisClient from "./db/redisdb";
 import { PrismaClient } from "@prisma/client";
-import { InviteInfo, LottoInfo, LottoInfoinRedis, LottoandChipsInfo, RankingPageInfo, RankingUserInfo, UserDataInfo, UserInfo, taskCompletion } from "./types";
+import { InviteInfo, LottoInfo, LottoInfoinRedis, LottoandChipsInfo, RankingPageInfo, RankingUserInfo, UserDataInfo, UserInfo, UserTest, taskCompletion, topPointsUsers } from "./types";
 import { checkIfTimeIsToday, invitationCodeGenerator, lottoGenerator } from "./utils/utilfunc";
 import { isoTimeExample, lottoInfoinRedisExampleJson } from "./utils/example";
 import responseMiddleware from "./middlewares/responseMiddleware";
 import dotenv from 'dotenv';
 import authMiddleware, { getInitData } from "./middlewares/authMiddleware";
+import { User } from "@tma.js/init-data-node";
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
@@ -93,7 +94,7 @@ app.get("/user", authMiddleware, async (req, res) => {
         })
 
         // 检查前端传递的用户信息中是否有邀请码信息
-        if (invitation_code) {
+        if (invitation_code !== "undefined") {
             const invited_info: InviteInfo = {
                 invitation_code: invitation_code,
                 invited_user_telegram_id: user_telegram_id,
@@ -169,6 +170,32 @@ app.get("/user", authMiddleware, async (req, res) => {
     }
 
     res.success(userDataInfo)
+
+    /** 测试
+    const lotto_number = await redisClient.get(`user_lotto_number_${user_telegram_id}`);
+    const lotto_win_number = await redisClient.get(`user_lotto_win_number_${user_telegram_id}`);
+    const newest_lotto = await redisClient.get(`user_newest_lotto_${user_telegram_id}`);
+    const daily_checkin = await redisClient.get(`user_daily_checkin_task_${user_telegram_id}`);
+    const daily_checkin_date: Date = new Date(daily_checkin!);
+    const daily_invite = await redisClient.get(`user_daily_invite_task_${user_telegram_id}`);
+    const daily_invite_date = new Date(daily_invite!);
+
+    const userTest: UserTest = {
+        invitation_code: invitation_code,
+        is_premium: is_premium,
+        chips: Number(user_chips),
+        points: Number(user_points),
+        ranking: Number(user_ranking) + 1,
+        lotto_number: Number(lotto_number),
+        lotto_win_number: Number(lotto_win_number),
+        newest_lotto: JSON.parse(newest_lotto!),
+        daily_checkin: daily_checkin_date,
+        daily_invite: daily_invite_date
+
+    }
+   
+    res.success(userTest);
+    */
 });
 
 
@@ -265,14 +292,13 @@ app.get("/lotto/start", authMiddleware, async (req, res) => {
             res.error("Lottery Record meets some errors");
         }
     } else {
-        res.error(`user &{user_telegram_id} doesn't have enough chips for a lotto`);
+        res.error(`user ${user_telegram_id} doesn't have enough chips for a lotto`);
     }
 
 });
 
 // 彩票游戏开奖
 // 注意，我会返回两种数据类型中的一个：string用于标明数据获取的错误，UserDataInfo用于指明用户筹码、积分、排名信息。
-// 前端body包含rewards
 app.post("/lotto/end", authMiddleware, async (req, res) => {
     // 获取请求头中的用户信息
     const initData = getInitData(res)!
@@ -294,7 +320,7 @@ app.post("/lotto/end", authMiddleware, async (req, res) => {
         await redisClient.set(`user_newest_lotto_${user_telegram_id}`, new_lotto_record);
 
         // 检查是否中奖
-        if (rewards !== 0) {
+        if (rewards > 0) {
             // 用户积分数增加rewards
             const old_user_points = await redisClient.zScore("user_points", user_telegram_id);
             const new_user_points = Number(old_user_points) + rewards;
@@ -326,7 +352,7 @@ app.post("/lotto/end", authMiddleware, async (req, res) => {
 });
 
 // 进入任务界面检查任务完成情况
-app.get("task/check", authMiddleware, async (req, res) => {
+app.get("/task/check", authMiddleware, async (req, res) => {
     // 获取请求头中的用户信息
     const initData = getInitData(res)!
 
@@ -394,7 +420,8 @@ app.get("task/check", authMiddleware, async (req, res) => {
     if (lotto_record) {
         // 用一个新变量存储解析后的JSON数据
         const lotto_record_json: LottoInfoinRedis = JSON.parse(lotto_record);
-        const dailyLottoTime: Date = lotto_record_json.bought_at;
+        // JSON.parse只会将日期字符串解析为字符串类型
+        const dailyLottoTime: Date = new Date(lotto_record_json.bought_at);
         const dailyLottoTimeIso: string = dailyLottoTime.toISOString();
         if (checkIfTimeIsToday(dailyLottoTimeIso)) {
             daily_lotto = true;
@@ -418,7 +445,7 @@ app.get("task/check", authMiddleware, async (req, res) => {
 
 // Telegram Premium任务完成
 // 给前端返回用户的筹码、积分、排名信息
-app.post("task/premium", authMiddleware, async (req, res) => {
+app.post("/task/premium", authMiddleware, async (req, res) => {
     // 获取请求头中的用户信息
     const initData = getInitData(res)!
 
@@ -451,7 +478,7 @@ app.post("task/premium", authMiddleware, async (req, res) => {
 
 // Join Telegram Channel任务完成
 // 给前端返回用户的筹码、积分、排名信息
-app.post("task/join_our_channel", authMiddleware, async (req, res) => {
+app.post("/task/join_our_channel", authMiddleware, async (req, res) => {
     // 获取请求头中的用户信息
     const initData = getInitData(res)!
 
@@ -484,7 +511,7 @@ app.post("task/join_our_channel", authMiddleware, async (req, res) => {
 
 // Follow Our X任务完成
 // 给前端返回用户的筹码、积分、排名信息
-app.post("task/follow_our_x", authMiddleware, async (req, res) => {
+app.post("/task/follow_our_x", authMiddleware, async (req, res) => {
     // 获取请求头中的用户信息
     const initData = getInitData(res)!
 
@@ -517,7 +544,7 @@ app.post("task/follow_our_x", authMiddleware, async (req, res) => {
 
 // Daily Checkin任务完成
 // 给前端返回用户的筹码、积分、排名信息
-app.post("task/daily_checkin", authMiddleware, async (req, res) => {
+app.post("/task/daily_checkin", authMiddleware, async (req, res) => {
     // 获取请求头中的用户信息
     const initData = getInitData(res)!
 
@@ -556,7 +583,7 @@ app.post("task/daily_checkin", authMiddleware, async (req, res) => {
 
 // Daily Invite任务完成
 // 给前端返回用户的筹码、积分、排名信息
-app.post("task/daily_invite", authMiddleware, async (req, res) => {
+app.post("/task/daily_invite", authMiddleware, async (req, res) => {
     // 获取请求头中的用户信息
     const initData = getInitData(res)!
 
@@ -590,7 +617,7 @@ app.post("task/daily_invite", authMiddleware, async (req, res) => {
 
 // Daily Lotto任务完成
 // 给前端返回用户的筹码、积分、排名信息
-app.post("task/daily_lotto", authMiddleware, async (req, res) => {
+app.post("/task/daily_lotto", authMiddleware, async (req, res) => {
     // 获取请求头中的用户信息
     const initData = getInitData(res)!
 
@@ -617,7 +644,7 @@ app.post("task/daily_lotto", authMiddleware, async (req, res) => {
 });
 
 // 提供给排名页面排名信息
-app.get("rank", authMiddleware, async (req, res) => {
+app.get("/rank", authMiddleware, async (req, res) => {
     // 获取请求头中的用户信息
     const initData = getInitData(res)!
 
@@ -627,7 +654,16 @@ app.get("rank", authMiddleware, async (req, res) => {
 
     // TODO：暂时先弄前五名的用户
     // 不确定这个会不会返回带用户telegram_id的数组
-    const topPointsUsers = await redisClient.zRangeWithScores('user_points', 0, 4, {BY: "SCORE", REV: true});
+    // TODO：数据库中没有5条记录则不显示
+    // 测试
+    const users_counts = 1;
+    let topPointsUsers: topPointsUsers[] = [];
+    let topPointsUser: string[] = [];
+    if (users_counts < 5) {
+        topPointsUsers = await redisClient.zRangeWithScores('user_points', 0, 0, {BY: "SCORE", REV: true});
+    } else {
+        topPointsUser = await redisClient.zRange('user_points', 0, 4, {BY: "SCORE", REV: true});
+    }
 
     const rankingUserInfoArray: RankingUserInfo[] = [];
     // 假设返回如上的数组
@@ -677,7 +713,9 @@ app.get("rank", authMiddleware, async (req, res) => {
         ranking_info: rankingUserInfoArray
     }
     
-    res.success(rankingPageInfo);
+    // res.success(rankingPageInfo);
+    // 测试
+    res.json(topPointsUser);
 });
 
 
