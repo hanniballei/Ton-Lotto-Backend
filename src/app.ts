@@ -46,6 +46,9 @@ app.get("/user", authMiddleware, async (req, res) => {
         }
     });
 
+    let isNewUser = false;
+    let userInvitationCode = user?.invitation_code;
+
     // 检查用户是否是新用户
     if (user) {
         // 若前端传入的is_premium值与MySQL中记录的is_premium不同，则更新MySQL中的值
@@ -81,6 +84,9 @@ app.get("/user", authMiddleware, async (req, res) => {
 
         // 根据MySQL的自增id生成邀请码
         const user_invitation_code: string = invitationCodeGenerator(mysql_id);
+
+        isNewUser = true;
+        userInvitationCode = user_invitation_code;
 
         // 更新MySQL的Users数据表
         // 因为用了两步操作数据库，所以前端尽量在收到或使用invitation_code信息的时候加入是否为空字符串的校验
@@ -163,10 +169,15 @@ app.get("/user", authMiddleware, async (req, res) => {
     // 注意排名是从0开始的，需要给排名+1
     const user_ranking = await redisClient.zRevRank("user_points", user_telegram_id);
 
-    const userDataInfo: UserDataInfo = {
+    const userDataInfo: UserDataInfo & {
+        invitation_code?: string
+        is_new?: boolean
+    } = {
         chips: Number(user_chips),
         points: Number(user_points),
-        ranking: Number(user_ranking) + 1
+        ranking: Number(user_ranking) + 1,
+        invitation_code: user?.invitation_code,
+        is_new: isNewUser
     }
 
     res.success(userDataInfo)
@@ -208,15 +219,16 @@ app.get("/lotto/check", authMiddleware, async (req, res) => {
     // 从req.header解析出来的常量
     const { id } = initData.user!
     const user_telegram_id = String(id);
-    
     const lotto_record = await redisClient.get(`user_newest_lotto_${user_telegram_id}`);
+
     if (lotto_record) {
         // 用一个新变量存储解析后的JSON数据
         const lotto_record_json: LottoInfoinRedis = JSON.parse(lotto_record);
         const lotto_done: boolean = lotto_record_json.done;
         res.success(!lotto_done);
     } else {
-        res.error("Lottery Record meets some errors");
+        // res.error("Lottery Record meets some errors");
+        res.success(false);
     }
 });
 
@@ -660,14 +672,14 @@ app.get("/rank", authMiddleware, async (req, res) => {
     let topPointsUsers: topPointsUsers[] = [];
     let topPointsUser: string[] = [];
     if (users_counts < 5) {
-        topPointsUsers = await redisClient.zRangeWithScores('user_points', 0, 0, {BY: "SCORE", REV: true});
+        topPointsUsers = await redisClient.zRangeWithScores('user_points', 0, 0, { BY: "SCORE", REV: true });
     } else {
-        topPointsUser = await redisClient.zRange('user_points', 0, 4, {BY: "SCORE", REV: true});
+        topPointsUser = await redisClient.zRange('user_points', 0, 4, { BY: "SCORE", REV: true });
     }
 
     const rankingUserInfoArray: RankingUserInfo[] = [];
     // 假设返回如上的数组
-    for (let i=0; i<topPointsUsers.length; i++) {
+    for (let i = 0; i < topPointsUsers.length; i++) {
         const telegram_id: string = topPointsUsers[i].value;
         const points: number = topPointsUsers[i].score;
 
@@ -712,7 +724,7 @@ app.get("/rank", authMiddleware, async (req, res) => {
         current_user: userDataInfo,
         ranking_info: rankingUserInfoArray
     }
-    
+
     // res.success(rankingPageInfo);
     // 测试
     res.json(topPointsUser);
