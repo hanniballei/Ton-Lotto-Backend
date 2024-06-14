@@ -176,7 +176,7 @@ app.get("/user", authMiddleware, async (req, res) => {
         chips: Number(user_chips),
         points: Number(user_points),
         ranking: Number(user_ranking) + 1,
-        invitation_code: user?.invitation_code,
+        invitation_code: userInvitationCode,
         is_new: isNewUser
     }
 
@@ -629,6 +629,7 @@ app.post("/task/daily_invite", authMiddleware, async (req, res) => {
 
 // Daily Lotto任务完成
 // 给前端返回用户的筹码、积分、排名信息
+// TODO:暂时放下
 app.post("/task/daily_lotto", authMiddleware, async (req, res) => {
     // 获取请求头中的用户信息
     const initData = getInitData(res)!
@@ -665,17 +666,7 @@ app.get("/rank", authMiddleware, async (req, res) => {
     const user_telegram_id = String(id);
 
     // TODO：暂时先弄前五名的用户
-    // 不确定这个会不会返回带用户telegram_id的数组
-    // TODO：数据库中没有5条记录则不显示
-    // 测试
-    const users_counts = 1;
-    let topPointsUsers: topPointsUsers[] = [];
-    let topPointsUser: string[] = [];
-    if (users_counts < 5) {
-        topPointsUsers = await redisClient.zRangeWithScores('user_points', 0, 0, { BY: "SCORE", REV: true });
-    } else {
-        topPointsUser = await redisClient.zRange('user_points', 0, 4, { BY: "SCORE", REV: true });
-    }
+    const topPointsUsers: topPointsUsers[] = await redisClient.zRangeWithScores('user_points', 0, 4, {REV: true});
 
     const rankingUserInfoArray: RankingUserInfo[] = [];
     // 假设返回如上的数组
@@ -724,10 +715,8 @@ app.get("/rank", authMiddleware, async (req, res) => {
         current_user: userDataInfo,
         ranking_info: rankingUserInfoArray
     }
-
-    // res.success(rankingPageInfo);
-    // 测试
-    res.json(topPointsUser);
+    
+    res.success(rankingPageInfo);
 });
 
 
