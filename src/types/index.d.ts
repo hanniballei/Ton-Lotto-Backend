@@ -75,9 +75,17 @@ export interface RankingUserInfo {
     points: number
 }
 
+export interface UserDataInfoRank {
+    chips: number,
+    points: number,
+    ranking: number,
+    invitation_code: string,
+    invite_number: number
+}
+
 // 排名界面需要返回给前端的信息
 export interface RankingPageInfo {
-    current_user: UserDataInfo,
+    current_user: UserDataInfoRank,
     ranking_info: RankingUserInfo[]
 }
 

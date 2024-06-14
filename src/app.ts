@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import redisClient from "./db/redisdb";
 import { PrismaClient } from "@prisma/client";
-import { InviteInfo, LottoInfo, LottoInfoinRedis, LottoandChipsInfo, RankingPageInfo, RankingUserInfo, UserDataInfo, UserInfo, UserTest, taskCompletion, topPointsUsers } from "./types";
+import { InviteInfo, LottoInfo, LottoInfoinRedis, LottoandChipsInfo, RankingPageInfo, RankingUserInfo, UserDataInfo, UserDataInfoRank, UserInfo, UserTest, taskCompletion, topPointsUsers } from "./types";
 import { checkIfTimeIsToday, invitationCodeGenerator, lottoGenerator } from "./utils/utilfunc";
 import { isoTimeExample, lottoInfoinRedisExampleJson } from "./utils/example";
 import responseMiddleware from "./middlewares/responseMiddleware";
@@ -699,16 +699,50 @@ app.get("/rank", authMiddleware, async (req, res) => {
         rankingUserInfoArray.push(rankingUserInfo);
     }
 
+    // 从MySQL获取用户信息
+    const user = await prisma.users.findUnique({
+        where: {
+            user_telegram_id: user_telegram_id
+        }
+    });
+
+    // 用户的邀请码
+    let invitation_code: string = "";
+    if (user) {
+        if (user.invitation_code) {
+            invitation_code = user.invitation_code;
+        } else {
+            res.error("user's invitation code is invalid");
+        }
+    } else {
+        res.error("user data meets some errors");
+    }
+    
+    // 用户邀请人数
+    let invite_number = 0;
+    const invite_record = await prisma.inviteRecord.findMany({
+        where: {
+            invitation_code: invitation_code
+        }
+    });
+    if (invite_record) {
+        invite_number = invite_record.length;
+    } else {
+        res.error("invite records data meets some errors");
+    }
+
     // 从Redis中获取数据
     const user_chips = await redisClient.get(`user_chips_${user_telegram_id}`);
     const user_points = await redisClient.zScore("user_points", user_telegram_id);
     // 注意排名是从0开始的，需要给排名+1
     const user_ranking = await redisClient.zRevRank("user_points", user_telegram_id);
 
-    const userDataInfo: UserDataInfo = {
+    const userDataInfo: UserDataInfoRank = {
         chips: Number(user_chips),
         points: Number(user_points),
-        ranking: Number(user_ranking) + 1
+        ranking: Number(user_ranking) + 1,
+        invitation_code: invitation_code,
+        invite_number: invite_number
     }
 
     const rankingPageInfo: RankingPageInfo = {
