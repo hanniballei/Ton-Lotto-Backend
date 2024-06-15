@@ -9,9 +9,33 @@ import responseMiddleware from "./middlewares/responseMiddleware";
 import dotenv from 'dotenv';
 import authMiddleware, { getInitData } from "./middlewares/authMiddleware";
 import { User } from "@tma.js/init-data-node";
+import { Bot, InlineKeyboard } from "grammy";
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
+// Bot实例
+const bot = new Bot(process.env.BOT_TOKEN!);
+
+// Bot对/start指令的回复
+bot.command("start", async (ctx) => {
+    const inlineKeyboard = new InlineKeyboard()
+        .url("Play Lotto Now", process.env.TMA_Link!)
+        .row()
+        .url("Join Our Community", process.env.Channel_Link!)
+        .row()
+        .url("Follow Our X", process.env.Twitter_Link!);
+    
+    await ctx.reply("Test", {
+        reply_markup: inlineKeyboard
+    });
+});
+
+bot.catch((err) => {
+    console.error('Error in bot:', err);
+});
+
+// Bot启动
+bot.start();
 
 const app = express();
 // 使用三个中间件，用于资源跨域请求以及解析HTTP JSON数据
@@ -576,7 +600,7 @@ app.post("/task/daily_checkin", authMiddleware, async (req, res) => {
     await redisClient.set(`user_daily_checkin_task_${user_telegram_id}`, isoTime);
 
     // 在Redis中增加筹码数量
-    await redisClient.incrBy(`user_chips_${user_telegram_id}`, 800);
+    await redisClient.incrBy(`user_chips_${user_telegram_id}`, 1200);
 
     // 从Redis中获取数据
     const user_chips = await redisClient.get(`user_chips_${user_telegram_id}`);
@@ -610,7 +634,7 @@ app.post("/task/daily_invite", authMiddleware, async (req, res) => {
     await redisClient.set(`user_daily_invite_task_${user_telegram_id}`, isoTime);
 
     // 在Redis中增加筹码数量
-    await redisClient.incrBy(`user_chips_${user_telegram_id}`, 800);
+    await redisClient.incrBy(`user_chips_${user_telegram_id}`, 1200);
 
     // 从Redis中获取数据
     const user_chips = await redisClient.get(`user_chips_${user_telegram_id}`);
