@@ -10,6 +10,8 @@ import dotenv from 'dotenv';
 import authMiddleware, { getInitData } from "./middlewares/authMiddleware";
 import { User } from "@tma.js/init-data-node";
 import { Bot, InlineKeyboard } from "grammy";
+import "express-async-errors";
+import { NextFunction, Request, Response } from 'express';
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
@@ -205,32 +207,6 @@ app.get("/user", authMiddleware, async (req, res) => {
     }
 
     res.success(userDataInfo)
-
-    /** 测试
-    const lotto_number = await redisClient.get(`user_lotto_number_${user_telegram_id}`);
-    const lotto_win_number = await redisClient.get(`user_lotto_win_number_${user_telegram_id}`);
-    const newest_lotto = await redisClient.get(`user_newest_lotto_${user_telegram_id}`);
-    const daily_checkin = await redisClient.get(`user_daily_checkin_task_${user_telegram_id}`);
-    const daily_checkin_date: Date = new Date(daily_checkin!);
-    const daily_invite = await redisClient.get(`user_daily_invite_task_${user_telegram_id}`);
-    const daily_invite_date = new Date(daily_invite!);
-
-    const userTest: UserTest = {
-        invitation_code: invitation_code,
-        is_premium: is_premium,
-        chips: Number(user_chips),
-        points: Number(user_points),
-        ranking: Number(user_ranking) + 1,
-        lotto_number: Number(lotto_number),
-        lotto_win_number: Number(lotto_win_number),
-        newest_lotto: JSON.parse(newest_lotto!),
-        daily_checkin: daily_checkin_date,
-        daily_invite: daily_invite_date
-
-    }
-   
-    res.success(userTest);
-    */
 });
 
 
@@ -777,6 +753,12 @@ app.get("/rank", authMiddleware, async (req, res) => {
     res.success(rankingPageInfo);
 });
 
+// 错误处理，必须位于所有定义的路由接口之下
+// 加入四个参数用来让express明白这是错误处理
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    console.log('handler error: ', err);
+    res.error();
+})
 
 //监听5000端口 理解为后端的端口号
 app.listen(PORT, () => {
