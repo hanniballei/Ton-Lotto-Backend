@@ -178,7 +178,7 @@ app.get("/user", authMiddleware, async (req, res) => {
             await redisClient.set(`user_daily_invite_task_${user_telegram_id}`, isoTimeExample);
         } else {
             // 在Redis中初始化用户信息
-            await redisClient.set(`user_chips_${user_telegram_id}`, 0);
+            await redisClient.set(`user_chips_${user_telegram_id}`, 500);
             await redisClient.zAdd("user_points", [{ score: 0, value: user_telegram_id }]);
             await redisClient.set(`user_lotto_number_${user_telegram_id}`, 0);
             await redisClient.set(`user_lotto_win_number_${user_telegram_id}`, 0);
