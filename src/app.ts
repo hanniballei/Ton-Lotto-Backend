@@ -26,7 +26,7 @@ bot.command("start", async (ctx) => {
         .url("💬  Join Our Community", process.env.Channel_Link!)
         .row()
         .url("✖️  Follow Our X", process.env.Twitter_Link!);
-    
+
     await ctx.reply("Test", {
         reply_markup: inlineKeyboard
     });
@@ -666,7 +666,7 @@ app.get("/rank", authMiddleware, async (req, res) => {
     const user_telegram_id = String(id);
 
     // TODO：暂时先弄前五名的用户
-    const topPointsUsers: topPointsUsers[] = await redisClient.zRangeWithScores('user_points', 0, 4, {REV: true});
+    const topPointsUsers: topPointsUsers[] = await redisClient.zRangeWithScores('user_points', 0, 4, { REV: true });
 
     const rankingUserInfoArray: RankingUserInfo[] = [];
     // 假设返回如上的数组
@@ -717,7 +717,7 @@ app.get("/rank", authMiddleware, async (req, res) => {
     } else {
         res.error("user data meets some errors");
     }
-    
+
     // 用户邀请人数
     let invite_number = 0;
     const invite_record = await prisma.inviteRecord.findMany({
@@ -749,7 +749,7 @@ app.get("/rank", authMiddleware, async (req, res) => {
         current_user: userDataInfo,
         ranking_info: rankingUserInfoArray
     }
-    
+
     res.success(rankingPageInfo);
 });
 
@@ -757,7 +757,6 @@ app.get("/rank", authMiddleware, async (req, res) => {
 // 加入四个参数用来让express明白这是错误处理
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     console.log('handler error: ', err);
-    res.error();
 })
 
 //监听5000端口 理解为后端的端口号
