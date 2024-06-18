@@ -94,7 +94,7 @@ app.get("/user", authMiddleware, async (req, res) => {
         // 组装要存入MySQL的用户数据
         const user: UserInfo = {
             user_telegram_id: user_telegram_id,
-            username: username!,
+            username: username || `user_${user_telegram_id}`,
             is_premium: is_premium,
             // 首次将用户信息存入MySQL时，邀请码这一个字段先置为空字符串
             invitation_code: placeholder
