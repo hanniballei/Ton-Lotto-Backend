@@ -16,28 +16,28 @@ dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 // Bot实例
-const bot = new Bot(process.env.BOT_TOKEN!);
+// const bot = new Bot(process.env.BOT_TOKEN!);
 
-// Bot对/start指令的回复
-bot.command("start", async (ctx) => {
-    const inlineKeyboard = new InlineKeyboard()
-        .url("🎮  Play Lotto Now", process.env.TMA_Link!)
-        .row()
-        .url("💬  Join Our Community", process.env.Channel_Link!)
-        .row()
-        .url("✖️  Follow Our X", process.env.Twitter_Link!);
+// // Bot对/start指令的回复
+// bot.command("start", async (ctx) => {
+//     const inlineKeyboard = new InlineKeyboard()
+//         .url("🎮  Play Lotto Now", process.env.TMA_Link!)
+//         .row()
+//         .url("💬  Join Our Community", process.env.Channel_Link!)
+//         .row()
+//         .url("✖️  Follow Our X", process.env.Twitter_Link!);
 
-    await ctx.reply("Test", {
-        reply_markup: inlineKeyboard
-    });
-});
+//     await ctx.reply("Test", {
+//         reply_markup: inlineKeyboard
+//     });
+// });
 
-bot.catch((err) => {
-    console.error('Error in bot:', err);
-});
+// bot.catch((err) => {
+//     console.error('Error in bot:', err);
+// });
 
-// Bot启动
-bot.start();
+// // Bot启动
+// bot.start();
 
 const app = express();
 // 使用三个中间件，用于资源跨域请求以及解析HTTP JSON数据
